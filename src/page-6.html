@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Stem Player — 6</title>
+    <link rel="stylesheet" href="shared/styles.css" />
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module">
+      import { mountPlayer } from './shared/player.js';
+
+      // Local paths for now; swap to absolute R2 URLs once the bucket prefix
+      // and CORS are set up. `pan` seeds the initial spread.
+      mountPlayer({
+        stems: [
+          { label: 'Stem 1', url: 'stems/test-stem-1.mp3', pan: -0.6 },
+          { label: 'Stem 2', url: 'stems/test-stem-2.mp3', pan: -0.35 },
+          { label: 'Stem 3', url: 'stems/test-stem-3.mp3', pan: -0.1 },
+          { label: 'Stem 4', url: 'stems/test-stem-4.mp3', pan: 0.1 },
+          { label: 'Stem 5', url: 'stems/test-stem-5.mp3', pan: 0.35 },
+          { label: 'Stem 6', url: 'stems/test-stem-6.mp3', pan: 0.6 },
+        ],
+      });
+    </script>
+  </body>
+</html>
