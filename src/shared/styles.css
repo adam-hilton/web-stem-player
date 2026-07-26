@@ -51,20 +51,27 @@ body {
 
 .row {
   display: flex;
+  /* Never shrink below two usable 44px control lines. If the viewport is too
+     short the layout clips visibly rather than silently crushing the sliders
+     into an untouchable sliver. */
+  min-height: calc(var(--control) * 2);
+  max-height: var(--row-h);
   flex: 1;
   flex-direction: column;
-  max-height: var(--row-h);
   padding: 0 10px;
   border-radius: 10px;
   background: var(--row);
 }
 
+/* Both sub-rows are flex containers. The range inputs inside them are NOT --
+   making an <input type="range"> a flex container breaks its shadow-DOM
+   track/thumb layout in WebKit. */
 .row-info,
-.fader {
+.fader-line {
   display: flex;
+  min-height: var(--control);
   flex: 1;
   align-items: center;
-  min-height: 0;
 }
 
 .row-info {
@@ -108,25 +115,40 @@ body {
 }
 
 /* Sliders: strip native chrome, then rebuild a thin track with a tall thumb so
-   the grabbable area fills the 44px touch target without a fat visual track. */
+   the grabbable area fills the 44px touch target without a fat visual track.
+   Vendor pseudo-elements MUST stay in separate rules -- a selector list
+   containing an unknown pseudo-element is dropped whole by every engine, so
+   grouping -webkit- with -moz- silently kills the rule in both. */
 .slider {
   height: var(--control);
+  flex: none;
   margin: 0;
+  -webkit-appearance: none;
   appearance: none;
   background: transparent;
+  touch-action: none; /* claim the gesture so scroll/zoom can't steal the drag */
 }
 
-.slider::-webkit-slider-runnable-track,
+.slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: #3a3a42;
+}
+
 .slider::-moz-range-track {
   height: 4px;
   border-radius: 2px;
   background: #3a3a42;
 }
 
+/* Thumb is 30px tall on a 4px track, so it needs centring by half the
+   difference: (4 - 30) / 2 = -13px. Only WebKit needs this; Firefox centres
+   the thumb on the track itself. */
 .slider::-webkit-slider-thumb {
   width: 22px;
   height: 30px;
   margin-top: -13px;
+  -webkit-appearance: none;
   appearance: none;
   border: none;
   border-radius: 5px;
@@ -142,12 +164,25 @@ body {
 }
 
 .pan {
-  width: 84px;
+  width: 76px;
+}
+
+/* Sized by width, NOT by flex-grow. Gecko mistracks a range input's drag when
+   it's a flex item with flex-basis 0 -- the thumb follows the pointer but the
+   value reverts on release, while a plain click still works. Chrome and WebKit
+   are unaffected. .fader-line handles the layout; the input just fills it. */
+.fader {
+  width: 100%;
   flex: none;
 }
 
-.fader {
-  width: 100%;
+.readout {
+  width: 34px;
+  flex: none;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  text-align: center;
 }
 
 .transport {

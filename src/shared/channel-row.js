@@ -23,15 +23,29 @@ export function createChannelRow(engine, index) {
     mute.classList.toggle('is-muted', muted);
   });
 
+  // Pan is near-impossible to confirm by ear when stems are correlated, so its
+  // value is shown numerically.
+  const readout = el('span', 'readout');
+  const showPan = (value) => {
+    const amount = Math.round(Math.abs(value) * 100);
+    readout.textContent = amount === 0 ? 'C' : `${value < 0 ? 'L' : 'R'}${amount}`;
+  };
+
   const pan = range(-1, 1, 0.01, channel.panner.pan.value, `Pan ${channel.label}`);
   pan.classList.add('pan');
-  pan.addEventListener('input', () => engine.setPan(index, Number(pan.value)));
-  // Double-tap/click a pan control to recentre — standard mixer behaviour and
-  // hard to hit exactly on a touch screen otherwise.
+  pan.addEventListener('input', () => {
+    const value = Number(pan.value);
+    engine.setPan(index, value);
+    showPan(value);
+  });
+  // Double-click to recentre — standard mixer behaviour, and hard to hit exactly
+  // by hand otherwise.
   pan.addEventListener('dblclick', () => {
     pan.value = '0';
     engine.setPan(index, 0);
+    showPan(0);
   });
+  showPan(Number(pan.value));
 
   const fx = el('span', 'fx', 'FX');
   fx.title = 'Effect send — not wired yet (Phase 2)';
@@ -40,8 +54,14 @@ export function createChannelRow(engine, index) {
   fader.classList.add('fader');
   fader.addEventListener('input', () => engine.setVolume(index, Number(fader.value)));
 
-  info.append(label, mute, pan, fx);
-  row.append(info, fader);
+  // The fader gets its own wrapper: the sub-row does the flex layout, the input
+  // keeps its own intrinsic height. Flexing the input directly breaks its
+  // shadow-DOM track/thumb rendering.
+  const faderLine = el('div', 'fader-line');
+  faderLine.append(fader);
+
+  info.append(label, pan, readout, mute, fx);
+  row.append(info, faderLine);
   return row;
 }
 
