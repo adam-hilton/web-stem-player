@@ -10,18 +10,26 @@
     <div id="app"></div>
     <script type="module">
       import { mountPlayer } from './shared/player.js';
+      import { STEM_BASE } from './shared/config.js';
 
-      // Local paths for now; swap to absolute R2 URLs once the bucket prefix
-      // and CORS are set up. `pan` seeds the initial spread.
+      // `pan` seeds the initial spread. Filenames are URL-encoded because the
+      // source files contain spaces.
+      const files = [
+        'loop-stem%201-Audio.mp3',
+        'loop-stem%202-Audio.mp3',
+        'loop-stem%203-Audio.mp3',
+        'loop-stem%204-Audio.mp3',
+        'loop-stem%205-Audio.mp3',
+        'loop-stem%206-Audio.mp3',
+      ];
+      const pans = [-0.6, -0.35, -0.1, 0.1, 0.35, 0.6];
+
       mountPlayer({
-        stems: [
-          { label: 'Stem 1', url: 'stems/test-stem-1.mp3', pan: -0.6 },
-          { label: 'Stem 2', url: 'stems/test-stem-2.mp3', pan: -0.35 },
-          { label: 'Stem 3', url: 'stems/test-stem-3.mp3', pan: -0.1 },
-          { label: 'Stem 4', url: 'stems/test-stem-4.mp3', pan: 0.1 },
-          { label: 'Stem 5', url: 'stems/test-stem-5.mp3', pan: 0.35 },
-          { label: 'Stem 6', url: 'stems/test-stem-6.mp3', pan: 0.6 },
-        ],
+        stems: files.map((file, i) => ({
+          label: `Stem ${i + 1}`,
+          url: STEM_BASE + file,
+          pan: pans[i],
+        })),
       });
     </script>
   </body>

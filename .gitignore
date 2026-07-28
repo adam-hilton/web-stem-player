@@ -1,2 +1,7 @@
 .DS_Store
 node_modules/
+
+# Audio is served from Cloudflare R2, not the repo. Keep a local copy in
+# src/stems/ for offline dev — the ?stems=local override in the pages picks it up.
+src/stems/
+src/stems-old/

@@ -154,3 +154,6 @@ This plan is written to be handed directly to Claude Code as a working spec.
 Suggested first prompt when starting the session: point Claude Code at this
 file plus the cloned/forked `stemPlayerOnline` repo, and ask it to begin with
 Phase 0 (extracting the audio-engine logic) before touching UI.
+
+## locally hosting
+run `python3 -m http.server 8000`
