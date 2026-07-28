@@ -58,6 +58,19 @@ The files also carry no Xing/LAME header, so no decoder can strip the encoder de
 **Deployed** — https://adam-hilton.github.io/web-stem-player/page-6.html (public repo
 `adam-hilton/web-stem-player`; Pages on a private repo needs a paid plan).
 
+**Controls now default to unity** (`29b6ee0`). Faders defaulted to `0.8` and `page-6.html`
+seeded a −0.6…0.6 pan spread, so a fresh load looked like a mix already in progress. Both
+now start neutral — pan centred, fader at 1.0. The per-stem `pan`/`volume` config seeds
+still work and are simply unused. Nothing is persisted to `localStorage`, so a hard refresh
+is genuinely a clean slate.
+
+One consequence to keep in mind: six channels at unity sum into a master gain of 1.0, where
+before each sat at 0.8. If a denser stem set ever distorts on the master, that's summing
+headroom rather than a bug — lower the master gain, don't re-seed the faders.
+
+**Restyled to a light theme** (`29b6ee0`, Adam's own change) — `--bg` to `#f6f5f3` with
+`--row` to `#2b2f32`, inverting the original dark ground to light-page/dark-rows.
+
 **R2 live** — `adamrhilton-dot-com-media/stems/` behind the r2.dev public dev URL, CORS
 scoped to the Pages origin plus the two localhost ports. All six objects verified serving
 `206` / `audio/mpeg` with `Access-Control-Allow-Origin`.
@@ -108,7 +121,7 @@ entirely and is the better loop from here anyway.
 - Layout arithmetic: 16px padding + (6 × 100 + 5 × 6 gaps) + 8 + 56 transport = **710px**
   against ~774px usable on 402 × 874.
 
-**Not verified** — carried forward
+**Not verified** — all cleared in Session 2
 
 - Multi-stem sync and the loop seam. Current stems are six copies of one file, which is
   ideal for detecting *desync* (identical files even slightly apart comb-filter audibly)
@@ -123,7 +136,12 @@ entirely and is the better loop from here anyway.
 | `AudioBufferSourceNode`, not `<audio>` | The loop requirement forced it. Six independently-clocked `<audio>` elements with `loop = true` desync *permanently* after the first cycle, not merely drift. With buffer sources, `loop = true` on a shared start time is sample-accurate and gapless for free. |
 | Release targets **Safari + Chrome only** | Firefox explicitly de-scoped; revisit only if scaling out later demands it. |
 | Effect send is a true parallel send, not an insert | The plan's prose says "send" but its signal chain draws an insert. Implemented as `panner → send`, send output unconnected until Phase 2. |
-| Stems committed to the repo for now | Temporary. Acceptance criteria require R2; swap URLs in the page config when the bucket prefix exists. |
+| ~~Stems committed to the repo for now~~ | **Superseded (Session 2).** Stems live in R2 and are gitignored, so the 16MB loop set never entered git history. |
+| Hosting: **GitHub Pages**, not Vercel | `gh` was already authenticated with `repo` + `workflow` scopes, so it needed no new logins or CLI installs, and the site is static-only. Revisit only if per-branch preview deploys or custom slugs become worth it. |
+| Pages deploys `src/` as an Actions artifact | Pages' built-in source can only serve the repo root or `/docs`. An Actions deploy keeps `src/` as the source dir with no rename and no copy step. |
+| Stem URLs behind one `STEM_BASE` constant | Moving buckets, prefixes, or on to a custom domain is a one-line change across every page. The `?stems=local` override keeps offline dev working and allows A/B-ing R2 against local files. |
+| r2.dev public dev URL for now, not a custom domain | Adequate for a POC. Cloudflare rate-limits it and neither caching nor Access apply, so a custom domain is the upgrade path if these pages outlive testing. |
+| All controls default to unity | A page that loads mid-mix reads as broken. Neutral defaults make "untouched" visually unambiguous. |
 
 ## Corrections to the Project Plan
 
@@ -200,16 +218,34 @@ knowing BPM and bar count at export time.
 
 ## Next Session
 
-1. **Pages 1–5** — copy `page-6.html`, trim the config. Now unblocked: the layout is
-   device-confirmed, so a fix won't have to be applied six times. The last Phase 1 item.
-2. Any UI tweaks arising from Adam's own pass over the deployed page.
-3. Optional, if these pages outlive testing: attach a custom domain (e.g.
-   `audio.adamrhilton.com`) to the bucket for caching and to escape the r2.dev rate limit.
-   One line in [config.js](src/shared/config.js) plus a CORS origin.
-4. Phase 2 (effect sends) is now genuinely reachable — the `panner → send` tap already
-   exists per channel with its output unconnected.
+Adam's stated plan, in order:
+
+1. **Build out all pages** — pages 1–5, copied from `page-6.html` with the config trimmed.
+   Now unblocked: the layout is device-confirmed, so a fix won't have to be applied six
+   times. The last outstanding Phase 1 item.
+2. **Then possibly Phase 2 effects.** Genuinely reachable — the `panner → send` tap already
+   exists per channel with its output unconnected, so no rewiring of the audio graph.
+3. **Or, if effects are cut from the POC scope, remove the FX UI instead.** Either branch is
+   cheap by design: the FX badge was built as an inert placeholder precisely so the row
+   layout wouldn't need revisiting whichever way this went. Deciding *not* to build effects
+   costs one element deletion per row, not a layout rework.
+
+Optional, unscheduled: attach a custom domain (e.g. `audio.adamrhilton.com`) to the bucket
+for Cloudflare caching and to escape the r2.dev rate limit. One line in
+[config.js](src/shared/config.js) plus adding the origin to the CORS policy. Worth doing
+only if these pages outlive testing.
 
 **Resolved, no longer open:** mono-vs-stereo and delivery format. Stereo mp3 at this loop
 length loads in ~2s on cellular and doesn't crash iOS, so the Session 1 memory mitigations
 (mono, Opus/AAC, pinning the sample rate) are unnecessary. Revisit only if stems get
 substantially longer.
+
+**Still open:** final stem-count range (1–5 vs 2–6) — building all 6 pages sidesteps needing
+the answer. Offline/cached vs online-only was never settled and has cost nothing so far;
+online-only is the de facto state.
+
+**Housekeeping carried forward:** the local copies in `src/stems/` are gitignored, so the
+repo no longer backs them up — R2 and the local disk are the only copies. `src/stems-old/`
+is untracked and can be deleted whenever. The repo is public because Pages from a private
+repo needs a paid plan; nothing sensitive is in it, but the visibility choice was never
+explicitly confirmed.

@@ -1,5 +1,15 @@
 # Stem Player Pages — Project Plan
 
+> **This file is the original spec and is kept as written.** Where the build has
+> diverged from it — and it has, in a few places that matter — the running record
+> in [project-progress.md](project-progress.md) is authoritative. See that file's
+> "Corrections to the Project Plan" section before trusting lines 64–79 (the
+> reference repo has no Web Audio API at all) or line 57 (wrong viewport width).
+>
+> **Status as of 2026-07-28:** the 6-stem page meets every acceptance criterion and
+> is deployed at https://adam-hilton.github.io/web-stem-player/page-6.html. Pages
+> 1–5 are the only outstanding Phase 1 work.
+
 ## Overview
 A set of static, personal-use web pages, each a lightweight stem player with a
 fixed, hardcoded set of audio stems. Build all 6 pages, scaling from 1 stem up
@@ -83,20 +93,21 @@ same pattern most mobile mixer/DAW apps use.
   row component, transport controls.
 - Each page is a thin HTML file that imports the shared module and passes a
   config: stem count + list of R2 file URLs + labels.
-- Suggested layout:
+- Suggested layout — as built, with two additions the plan didn't anticipate
+  (`player.js` glue so pages stay thin, `config.js` so the stem base URL is one
+  swappable constant):
   ```
-  /public or /src
+  /src
     /shared
       audio-engine.js
       channel-row.js
       transport.js
+      player.js     <- config -> engine + UI glue
+      config.js     <- STEM_BASE + ?stems=local override
       styles.css
-    page-1.html  (1 stem)
-    page-2.html  (2 stems)
-    page-3.html  (3 stems)
-    page-4.html  (4 stems)
-    page-5.html  (5 stems)
-    page-6.html  (6 stems, if used)
+    page-6.html  (6 stems)     <- built, deployed, accepted
+    page-1.html … page-5.html  <- not yet built
+  /stems           <- local dev copies only; gitignored, R2 is the source of truth
   ```
 
 ## Phased Build Plan
@@ -133,21 +144,28 @@ same pattern most mobile mixer/DAW apps use.
 ## Open Questions / Assumptions to Confirm Before Starting
 - Confirm final stem-count range (1–5 vs 2–6) so the unused page (1 or 6) can
   be discarded — not needed to start Phase 1, since all 6 are built regardless.
-- Confirm audio file formats/sizes (affects R2 setup and load-time UX on
-  mobile, e.g. whether to lazy-load stems beyond the first).
+  **Still open**, and still not blocking.
+- ~~Confirm audio file formats/sizes~~ — **resolved.** Six 69.7s / 48kHz / 320kbps
+  stereo mp3s, ~2.8MB each. Loads in ~2s on cellular, so no lazy-loading needed.
 - Confirm whether pages need to work offline/cached, or straightforward
-  online-only is fine.
+  online-only is fine. **Never settled; online-only is the de facto state** and
+  has cost nothing.
+- ~~Hosting: Vercel vs GitHub Pages~~ — **resolved: GitHub Pages.**
 
 ## Acceptance Criteria (per page)
-- [ ] Correct number of stems load and play in sync.
-- [ ] Each stem has working volume fader, mute toggle, pan control.
-- [ ] Dummy FX-send UI element present per stem row (unwired in Phase 1).
-- [ ] Single transport (play/pause, seek) controls all stems together.
-- [ ] On the 6-stem page, all rows and controls (including the dummy FX
+All seven pass on the 6-stem page as of 2026-07-28.
+- [x] Correct number of stems load and play in sync.
+- [x] Each stem has working volume fader, mute toggle, pan control.
+- [x] Dummy FX-send UI element present per stem row (unwired in Phase 1).
+- [x] Single transport (play/pause, seek) controls all stems together.
+- [x] On the 6-stem page, all rows and controls (including the dummy FX
       element) are visible and operable within an iPhone 16 Pro portrait
       viewport without scrolling.
-- [ ] Page loads audio from Cloudflare R2, not bundled in the repo.
-- [ ] Page deploys cleanly to Vercel/GitHub Pages.
+- [x] Page loads audio from Cloudflare R2, not bundled in the repo.
+- [x] Page deploys cleanly to Vercel/GitHub Pages.
+
+Pages 1–5 inherit all of the above from shared modules, so they should pass on
+arrival — but the criteria are per-page and remain unchecked until each is built.
 
 ## Note for Claude Code / VS Code Integration
 This plan is written to be handed directly to Claude Code as a working spec.
@@ -156,4 +174,22 @@ file plus the cloned/forked `stemPlayerOnline` repo, and ask it to begin with
 Phase 0 (extracting the audio-engine logic) before touching UI.
 
 ## locally hosting
-run `python3 -m http.server 8000`
+From `src/`, run any static file server — no build step:
+
+```
+cd src && python3 -m http.server 8000
+```
+
+Then open http://localhost:8000/page-6.html
+
+Stems come from R2 by default, so that URL works with no local audio present.
+To read the local copies in `src/stems/` instead — offline work, or A/B-ing
+against R2 — append `?stems=local`:
+
+```
+http://localhost:8000/page-6.html?stems=local
+```
+
+Note that `localhost` won't reach a phone on the same Wi-Fi; use the Mac's LAN IP
+(`ipconfig getifaddr en0`), and be aware that public/guest networks commonly block
+device-to-device traffic outright. Testing against the deployed URL avoids this.
