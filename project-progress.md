@@ -7,8 +7,8 @@ Updated at the end of each session. Newest session first in the log.
 
 | Phase | State |
 | --- | --- |
-| Phase 0 — Setup | **Superseded.** Reference-repo extraction turned out to be a no-op (see Corrections). R2 setup not started. |
-| Phase 1 — Core player | **In progress.** Engine + UI + 6-stem page built and loading. Pages 1–5, R2, deploy outstanding. |
+| Phase 0 — Setup | **Superseded.** Reference-repo extraction turned out to be a no-op (see Corrections). R2 upload in progress. |
+| Phase 1 — Core player | **In progress.** 6-stem page functionally accepted on desktop and deployed to Pages. R2 swap, on-device check, and pages 1–5 outstanding. |
 | Phase 2 — Effect sends | Not started. Send node exists per channel, output unconnected. |
 
 ### Acceptance Criteria (6-stem page)
@@ -16,18 +16,56 @@ Updated at the end of each session. Newest session first in the log.
 | Criterion | State |
 | --- | --- |
 | Correct number of stems load and play | ✅ All 6 decode and mount |
-| Stems play in sync | ⏳ Not verified — needs a listen with real (non-duplicate) stems |
-| All stems loop on completion | ⏳ Not verified — see mp3 loop seam below |
+| Stems play in sync | ✅ Confirmed on desktop with real strict-loop stems |
+| All stems loop on completion | ✅ Confirmed — no audible seam (see Session 2) |
 | Volume fader per stem | ✅ Confirmed in Chrome + Safari |
-| Mute toggle per stem | ⏳ Built, not explicitly confirmed |
+| Mute toggle per stem | ✅ Confirmed on desktop |
 | Pan control per stem | ✅ Confirmed in Chrome + Safari |
 | Dummy FX-send element per row | ✅ Renders, inert |
-| Single transport (play/pause, seek) | ⏳ Built, not explicitly confirmed |
-| Fits iPhone 16 Pro portrait, no scroll | ⏳ Arithmetic checks out (~710px of ~774 usable); not tested on device |
-| Audio loaded from R2, not the repo | ❌ Currently local `src/stems/`; stems are committed for now |
-| Deploys cleanly to Vercel/GH Pages | ❌ Not started |
+| Single transport (play/pause, seek) | ✅ Confirmed on desktop |
+| Fits iPhone 16 Pro portrait, no scroll | ⏳ Arithmetic checks out (~710px of ~774 usable); still untested on device — LAN testing blocked, see Session 2 |
+| Audio loaded from R2, not the repo | ⏳ Page reads `STEM_BASE`; awaiting bucket URL. Stems no longer tracked in git |
+| Deploys cleanly to Vercel/GH Pages | ✅ Live at https://adam-hilton.github.io/web-stem-player/page-6.html |
 
 ## Session Log
+
+### Session 2 — 2026-07-28
+
+**Verified — the two criteria Session 1 couldn't judge**
+
+- **Sync and loop both clean** on desktop with a real strict-loop stem set (six distinct
+  69.696s / 48kHz / 320kbps mp3s). No audible seam at the loop point, no drift across
+  repeats. Adam's call: any residual artefact is inaudible and not worth solving.
+- Mute, play/pause and seek confirmed by hand.
+
+**Why the seam didn't materialise** — worth recording, because it's a property of the
+export and not of the player. 69.696s at 48kHz is 3,345,408 samples, which is exactly
+2904 mp3 frames of 1152 samples with nothing left over. No partial final frame means no
+tail padding to hear. A future stem set whose length *doesn't* land on a frame boundary
+can bring the seam back, and then the `loopStart`/`loopEnd` fix below becomes live again.
+The files also carry no Xing/LAME header, so no decoder can strip the encoder delay for us.
+
+**Built**
+
+- [src/shared/config.js](src/shared/config.js) — `STEM_BASE`, one constant for every page,
+  plus a `?stems=local` override that reads `src/stems/` for offline work.
+- [.github/workflows/deploy.yml](.github/workflows/deploy.yml) — publishes `src/` as a
+  Pages artifact. Pages' built-in source only serves the repo root or `/docs`, so an
+  Actions deploy is what keeps `src/` as the source dir without a rename or a copy step.
+- Stems untracked and ignored; the old test stems removed. The 16MB loop set stays out
+  of git history.
+
+**Deployed** — https://adam-hilton.github.io/web-stem-player/page-6.html (public repo
+`adam-hilton/web-stem-player`; Pages on a private repo needs a paid plan).
+
+**Blocked / carried forward**
+
+- **On-device iPhone test.** LAN testing failed on public Wi-Fi — almost certainly AP
+  client isolation, which nothing on the client can work around. Deferred to the deployed
+  URL rather than spending more time on it.
+- **R2.** Adam uploads via the dashboard; page goes live against the bucket once the base
+  URL and CORS are in place. Until then the deployed page only plays with `?stems=local`
+  against a local server.
 
 ### Session 1 — 2026-07-26
 
@@ -150,13 +188,19 @@ knowing BPM and bar count at export time.
 
 - Final stem-count range (1–5 vs 2–6) — not blocking; all 6 pages get built.
 - Offline/cached vs online-only.
-- Hosting choice: Vercel vs GitHub Pages.
+- ~~Hosting choice: Vercel vs GitHub Pages.~~ **Resolved: GitHub Pages** — `gh` was already
+  authenticated with `repo` + `workflow` scopes, so it needed no new logins, and the site is
+  static-only. Revisit if per-branch preview deploys or custom slugs become worth it.
+- Pages 1–5 deliberately deferred until the mobile layout is confirmed on a real device, so
+  any layout fix only has to be made once rather than across six files.
 
 ## Next Session
 
-1. Pages 1–5 — copy `page-6.html`, trim the config. Cheap.
-2. Confirm mute, play/pause, seek; check no-scroll on a real iPhone.
-3. R2 bucket prefix + **CORS headers**, then swap page configs to absolute URLs.
-4. Deploy to Vercel or GH Pages.
-5. Get one set of real stems in to judge sync and the loop seam properly, and to settle
-   mono-vs-stereo and the delivery format.
+1. Set `R2_BASE` in [src/shared/config.js](src/shared/config.js) to the real bucket URL once
+   the upload and **CORS policy** are done, then confirm the deployed page plays.
+2. Open the deployed URL on the iPhone — the no-scroll check, plus whether iOS Safari holds
+   6 decoded stems without being killed.
+3. Pages 1–5 — copy `page-6.html`, trim the config. Cheap, but do it after (2).
+4. Settle mono-vs-stereo and delivery format. The 69.7s loop length makes this far less
+   pressing than the 2–3 minute case Session 1 costed: 6 stereo stems at 48kHz for 70s is
+   ~161 MiB decoded, comfortably inside what iOS tolerates.
