@@ -12,8 +12,9 @@
       import { mountPlayer } from './shared/player.js';
       import { STEM_BASE } from './shared/config.js';
 
-      // `pan` seeds the initial spread. Filenames are URL-encoded because the
-      // source files contain spaces.
+      // Filenames are URL-encoded because the source files contain spaces.
+      // No `pan`/`volume` seeds: every control defaults to unity (centre / 1.0)
+      // so the page loads in a neutral state.
       const files = [
         'loop-stem%201-Audio.mp3',
         'loop-stem%202-Audio.mp3',
@@ -22,13 +23,11 @@
         'loop-stem%205-Audio.mp3',
         'loop-stem%206-Audio.mp3',
       ];
-      const pans = [-0.6, -0.35, -0.1, 0.1, 0.35, 0.6];
 
       mountPlayer({
         stems: files.map((file, i) => ({
           label: `Stem ${i + 1}`,
           url: STEM_BASE + file,
-          pan: pans[i],
         })),
       });
     </script>

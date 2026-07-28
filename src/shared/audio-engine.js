@@ -38,7 +38,9 @@ export class StemEngine {
         gain,
         panner,
         send,
-        volume: stem.volume ?? 0.8,
+        // Unity by default. A page can still seed a different starting level via
+        // config, but nothing does — every control should read as untouched on load.
+        volume: stem.volume ?? 1,
         muted: false,
       };
     });
