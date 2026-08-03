@@ -105,6 +105,41 @@ both states, so nothing can render as an emoji.
 **Not verified — Adam's to judge:** anything audible (8-stem sync, the loop seam on the new
 set) and anything on a physical iPhone.
 
+#### Silent on iPhone — open, fix is a hypothesis
+
+Reported at the end of the session: the deployed pages play silently on device while working
+on desktop and in the desktop emulator. It predates this session's work — it reproduces on the
+old page with the old stems — and it reproduces on page-1, which is only 2 stems, so it is
+neither a regression nor the memory ceiling.
+
+What's been ruled out, and what it rules in:
+
+- **Not the graph.** An `AnalyserNode` tapped on master in desktop Chrome reads peak 0.044 /
+  RMS 0.018 with the context `running`. Signal reaches `destination`.
+- **Not the phone.** Ring/Silent switch off, media volume up, other sites audible.
+- **Not a frozen clock.** The timer counts up on device, so `ctx.currentTime` is advancing.
+- **Never worked.** Session 2's on-device pass confirmed *layout* only — its table credits
+  sync, mute and transport to desktop. On-device audio was never actually checked.
+
+Leading cause, and what was changed: the `AudioContext` is constructed at page load because
+`decodeAudioData` needs one, so it is born outside any user gesture. WebKit runs such a
+context — clock advancing, state `running` — while routing its output nowhere. `play()` also
+guarded `resume()` behind `if (state === 'suspended')`, which on iOS skips the call in exactly
+the case that needs it, since the state can read `running` while the session is inactive.
+`_activate()` in [audio-engine.js](src/shared/audio-engine.js) now resumes unconditionally and
+starts one frame of silence, both synchronously inside the gesture, to force session
+activation. **Unverified — there is no iPhone in the loop here.**
+
+Also worth ruling out for free: iOS Safari caps concurrent `AudioContext`s and returns silent
+ones past the limit. Five newly-built pages open across five tabs would hit it. Force-quit
+Safari, open one page.
+
+To diagnose on the phone without tethering to a Mac, append **`?debug=1`** — see
+[debug.js](src/shared/debug.js). It shows context state and a live output level off an
+analyser on master, which splits the remaining causes: a moving level with no sound means
+routing (nothing in this repo will fix it); a level pinned at `0.000` means the graph is
+silent and the bug is ours.
+
 ### Session 2 — 2026-07-28
 
 **Verified — the two criteria Session 1 couldn't judge**
@@ -317,13 +352,15 @@ above stays unnecessary until an export doesn't divide evenly.
 
 ## Next Session
 
-1. **Test page-5 on a physical iPhone.** The only outstanding acceptance criterion and the
-   only real risk in the build: 485 MiB decoded against ~153 MiB last proven. Load it over
-   cellular, hit play, let it loop once. If it dies, go to mono stems (→ ~242 MiB) — that is
-   a re-export, not a code change.
-2. **Confirm by ear** what can't be checked from a headless browser: 8-stem sync and the loop
+1. **Chase the iPhone silence first** — it blocks every other on-device check. Deploy the
+   `_activate()` fix, force-quit Safari, open one page with `?debug=1`, and read the output
+   level. See the Session 3 subsection for what each reading means.
+2. **Then test page-5 on the phone.** 485 MiB decoded against ~153 MiB last proven. Load it
+   over cellular, hit play, let it loop once. If it dies, go to mono stems (→ ~242 MiB) —
+   that is a re-export, not a code change.
+3. **Confirm by ear** what can't be checked from a headless browser: 8-stem sync and the loop
    seam on the new set.
-3. **Deploy and check the live URLs**, including that the site root now serves `index.html`.
+4. **Deploy and check the live URLs**, including that the site root now serves `index.html`.
    Note `page-6.html` is gone, so any saved link to it is dead.
 
 Optional, unscheduled: attach a custom domain (e.g. `audio.adamrhilton.com`) to the bucket

@@ -3,6 +3,7 @@
 import { StemEngine } from './audio-engine.js';
 import { createChannelRow } from './channel-row.js';
 import { createTransport } from './transport.js';
+import { DEBUG } from './config.js';
 
 export async function mountPlayer({ stems, mount = '#app' }) {
   const root = document.querySelector(mount);
@@ -33,5 +34,12 @@ export async function mountPlayer({ stems, mount = '#app' }) {
   // Transport first: it sits at the top of the page and sticks there while the
   // rows scroll underneath.
   root.append(createTransport(engine), rows);
+
+  // Dynamic import so the diagnostic code isn't fetched on a normal load.
+  if (DEBUG) {
+    const { mountDebug } = await import('./debug.js');
+    mountDebug(engine, root);
+  }
+
   return engine;
 }

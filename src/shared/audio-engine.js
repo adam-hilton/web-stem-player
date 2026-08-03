@@ -51,6 +51,7 @@ export class StemEngine {
 
     this.duration = 0;
     this.playing = false;
+    this._activated = false; // see _activate(): iOS audio-session unlock
     this._startCtxTime = 0; // ctx.currentTime at which playback began
     this._startOffset = 0; // position within the loop at that moment
     this._pausedAt = 0;
@@ -81,9 +82,34 @@ export class StemEngine {
     });
   }
 
+  // iOS only. The context is constructed at page load because decodeAudioData
+  // needs one, which means it is born outside any user gesture — and WebKit will
+  // happily run such a context, advancing currentTime, while routing its output
+  // nowhere. The symptom is a page that looks like it is playing, with a moving
+  // playhead and a running clock, and is silent. Desktop Chrome and Safari don't
+  // enforce this, so it only ever shows up on device.
+  //
+  // Two things are needed, both synchronous so they stay inside the gesture that
+  // called play():
+  //   - resume() unconditionally, not just when state reads 'suspended'. On iOS
+  //     the state can read 'running' while the session is still inactive, so the
+  //     old `if (suspended)` guard skipped the call in exactly the case that
+  //     needed it. Also covers Safari's non-standard 'interrupted' state.
+  //   - start one frame of silence. Actually rendering something is what makes
+  //     WebKit activate the audio session and attach a real output route.
+  _activate() {
+    this.ctx.resume();
+    if (this._activated) return;
+    this._activated = true;
+    const kick = this.ctx.createBufferSource();
+    kick.buffer = this.ctx.createBuffer(1, 1, this.ctx.sampleRate);
+    kick.connect(this.ctx.destination);
+    kick.start();
+  }
+
   play() {
     if (this.playing || !this.duration) return;
-    if (this.ctx.state === 'suspended') this.ctx.resume();
+    this._activate();
 
     // Small lookahead so every source is scheduled before the clock reaches it —
     // this is what makes the start sample-accurate rather than best-effort.

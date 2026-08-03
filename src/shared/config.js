@@ -15,6 +15,9 @@ const useLocal = new URLSearchParams(location.search).get('stems') === 'local';
 
 export const STEM_BASE = useLocal ? 'stems/' : R2_BASE;
 
+// Append ?debug=1 to show the on-device diagnostic panel (see debug.js).
+export const DEBUG = new URLSearchParams(location.search).get('debug') === '1';
+
 // The full stem set, in order. Filenames are URL-encoded because the source
 // files contain spaces. Pages take a prefix of this list rather than restating
 // it, so adding or reordering stems is one edit here instead of five.

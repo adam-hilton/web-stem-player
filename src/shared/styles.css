@@ -278,6 +278,17 @@ body {
   color: var(--danger);
 }
 
+/* ?debug=1 only. Deliberately plain and out of the way. */
+.debug {
+  margin: 4px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--row);
+  color: var(--ink);
+  font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+  white-space: pre;
+}
+
 /* Landing page. The deployed site root used to 404, so there was no way to reach
    a page without already knowing its filename. */
 .index {
