@@ -1,16 +1,39 @@
 // Minimal transport: play/pause button + a single line with a playhead.
-// Tap or drag anywhere on the line to seek.
+// Tap or drag anywhere on the line to seek. Mounted at the top of the page and
+// sticky, so it stays reachable once the taller pages scroll.
+
+// Both states are drawn, not typed. The obvious pause character (U+23F8) is
+// rendered as a colour emoji by Apple platforms, which reads nothing like the
+// play triangle beside it; one inline SVG with both shapes keeps the two states
+// visually matched and independent of font coverage.
+const GLYPHS = `
+  <svg class="glyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <path class="glyph-play" d="M8 5.5v13l11-6.5z" />
+    <g class="glyph-pause">
+      <rect x="7.5" y="5.5" width="3.5" height="13" rx="1" />
+      <rect x="13" y="5.5" width="3.5" height="13" rx="1" />
+    </g>
+  </svg>
+`;
 
 export function createTransport(engine) {
   const bar = el('div', 'transport');
 
-  const button = el('button', 'play', '▶');
+  const button = el('button', 'play');
   button.type = 'button';
-  button.setAttribute('aria-label', 'Play');
+  button.innerHTML = GLYPHS;
+
+  // Button state is derived from the engine rather than tracked separately, so
+  // the two can't drift apart.
+  const render = () => {
+    button.classList.toggle('is-playing', engine.playing);
+    button.setAttribute('aria-label', engine.playing ? 'Pause' : 'Play');
+  };
+  render();
+
   button.addEventListener('click', () => {
     engine.toggle();
-    button.textContent = engine.playing ? '⏸' : '▶';
-    button.setAttribute('aria-label', engine.playing ? 'Pause' : 'Play');
+    render();
   });
 
   const line = el('div', 'line');

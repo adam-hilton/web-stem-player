@@ -30,6 +30,8 @@ export async function mountPlayer({ stems, mount = '#app' }) {
   rows.className = 'rows';
   engine.channels.forEach((_, i) => rows.append(createChannelRow(engine, i)));
 
-  root.append(rows, createTransport(engine));
+  // Transport first: it sits at the top of the page and sticks there while the
+  // rows scroll underneath.
+  root.append(createTransport(engine), rows);
   return engine;
 }

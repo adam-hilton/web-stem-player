@@ -1,7 +1,11 @@
-/* Mobile-first. Hard budget: 6 rows x 100px + transport must fit an
-   iPhone 16 Pro portrait viewport (402 x 874 CSS px, ~700px usable inside
-   Safari chrome) with no scrolling. Each row is two 50px sub-rows; controls
-   are 44px so touch targets stay usable inside that. */
+/* Mobile-first, sized for an iPhone 16 Pro portrait viewport (402 x 874 CSS px).
+   Rows are a fixed 100px of two 50px sub-rows with 44px controls, so touch
+   targets stay usable.
+
+   Pages up to 8 stems are allowed to scroll — the earlier "everything must fit
+   one viewport" budget was dropped, which is why rows size naturally instead of
+   flexing to fill the height. The transport is sticky at the top so play/pause
+   and the playhead stay reachable on the taller pages. */
 
 :root {
   --bg: #f6f5f3;
@@ -20,9 +24,8 @@
 
 html,
 body {
-  height: 100%;
+  min-height: 100%;
   margin: 0;
-  overflow: hidden; /* the layout must fit; scrolling would mask a failure */
 }
 
 body {
@@ -34,29 +37,27 @@ body {
 
 #app {
   display: flex;
+  min-height: 100dvh;
   flex-direction: column;
-  height: 100dvh;
   padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
   gap: 8px;
 }
 
 .rows {
   display: flex;
-  flex: 1;
+  flex: none;
   flex-direction: column;
-  justify-content: center;
   gap: 6px;
-  min-height: 0;
 }
 
+/* Fixed height, never flexed. Rows used to stretch to fill the viewport, which
+   is what let them crush the sliders into an untouchable sliver on a short
+   window; sizing them naturally and letting the page scroll removes that failure
+   mode entirely rather than guarding against it. */
 .row {
   display: flex;
-  /* Never shrink below two usable 44px control lines. If the viewport is too
-     short the layout clips visibly rather than silently crushing the sliders
-     into an untouchable sliver. */
-  min-height: calc(var(--control) * 2);
-  max-height: var(--row-h);
-  flex: 1;
+  height: var(--row-h);
+  flex: none;
   flex-direction: column;
   padding: 0 10px;
   border-radius: 10px;
@@ -102,16 +103,6 @@ body {
   border-color: var(--danger);
   background: var(--danger);
   color: #fff;
-}
-
-.fx {
-  flex: none;
-  padding: 4px 7px;
-  border: 1px dashed #4a4a54;
-  border-radius: 6px;
-  color: var(--dim);
-  font-size: 11px;
-  letter-spacing: 0.04em;
 }
 
 /* Sliders: strip native chrome, then rebuild a thin track with a tall thumb so
@@ -163,8 +154,11 @@ body {
   background: var(--ink);
 }
 
+/* Widened from 76px using the room the FX badge freed up. At 402px the info line
+   has ~362px inside its padding: pan 128 + readout 34 + mute 44 + 24 of gaps
+   leaves ~130px for the label, which is ample for "Stem 1". */
 .pan {
-  width: 76px;
+  width: 128px;
 }
 
 /* Sized by width, NOT by flex-grow. Gecko mistracks a range input's drag when
@@ -185,24 +179,55 @@ body {
   text-align: center;
 }
 
+/* Sticky at the top so the 8-stem page keeps play/pause and the playhead in
+   reach. The negative margins cancel #app's padding, so the bar spans the full
+   width and covers the gap above it rather than letting rows show through as
+   they scroll under. Opaque background is what makes that work. */
 .transport {
+  position: sticky;
+  z-index: 2;
+  top: 0;
   display: flex;
   height: 56px;
   flex: none;
   align-items: center;
   gap: 12px;
-  padding: 0 10px;
+  margin: -8px -10px 0;
+  padding: 0 20px;
+  border-bottom: 1px solid #e3e1dd;
+  background: var(--bg);
 }
 
 .play {
+  display: flex;
   width: var(--control);
   height: var(--control);
   flex: none;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
   border: none;
   border-radius: 50%;
   background: var(--accent);
   color: #06131a;
-  font-size: 17px;
+}
+
+/* Play and pause are two groups in one SVG; the button's state picks which one
+   is visible, so both are the same drawn shape family at the same optical size.
+   `fill: currentColor` keeps them tied to the button's colour. */
+.glyph {
+  width: 22px;
+  height: 22px;
+  fill: currentcolor;
+}
+
+.glyph-pause,
+.play.is-playing .glyph-play {
+  display: none;
+}
+
+.play.is-playing .glyph-pause {
+  display: inline;
 }
 
 /* Thin line with a playhead; the padded hit area makes it tappable without
@@ -251,4 +276,43 @@ body {
 
 .status.error {
   color: var(--danger);
+}
+
+/* Landing page. The deployed site root used to 404, so there was no way to reach
+   a page without already knowing its filename. */
+.index {
+  max-width: 520px;
+  margin: 0 auto;
+  gap: 14px;
+  color: var(--row); /* dark ink on the light ground, unlike the dark rows */
+}
+
+.index h1 {
+  margin: 6px 0 0;
+  font-size: 22px;
+}
+
+.page-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.page-list a {
+  display: flex;
+  min-height: calc(var(--control) + 8px);
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+  border-radius: 10px;
+  background: var(--row);
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.page-list .count {
+  color: var(--dim);
+  font-size: 13px;
+  font-weight: 400;
 }

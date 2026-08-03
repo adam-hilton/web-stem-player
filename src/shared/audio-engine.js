@@ -3,9 +3,13 @@
 // Per-stem chain:
 //   AudioBufferSourceNode -> gain (volume/mute) -> panner -+-> master -> destination
 //                                                          |
-//                                                          +-> send (Phase 2 gap:
-//                                                              output intentionally
-//                                                              unconnected)
+//                                                          +-> send (unused: output
+//                                                              intentionally unconnected)
+//
+// Effect sends are out of scope for the initial release and the FX badge has been
+// removed from the row UI. The send tap stays because it costs nothing with its
+// output unconnected, and keeping it means adding effects later is a UI change
+// rather than a rewiring of the audio graph.
 //
 // Sync/looping rely on every source sharing one start time and one loopEnd, so
 // they stay locked together indefinitely. Buffers are padded to a common length
@@ -29,7 +33,7 @@ export class StemEngine {
       gain.connect(panner);
       panner.connect(this.master); // dry path
       panner.connect(send); // parallel send tap
-      send.gain.value = 0; // silent, and output unconnected until Phase 2
+      send.gain.value = 0; // silent, and output unconnected
 
       return {
         label: stem.label,

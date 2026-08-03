@@ -7,27 +7,103 @@ Updated at the end of each session. Newest session first in the log.
 
 | Phase | State |
 | --- | --- |
-| Phase 0 — Setup | **Superseded.** Reference-repo extraction turned out to be a no-op (see Corrections). R2 upload in progress. |
-| Phase 1 — Core player | **6-stem page complete.** Every acceptance criterion passes, deployed and confirmed on device. Pages 1–5 are the only outstanding work. |
-| Phase 2 — Effect sends | Not started. Send node exists per channel, output unconnected. |
+| Phase 0 — Setup | **Superseded.** Reference-repo extraction turned out to be a no-op (see Corrections). R2 holds all 8 stems. |
+| Phase 1 — Core player | **All five pages built and deployed.** Only outstanding item is on-device confirmation of the 8-stem page (see the Session 3 risk). |
+| Phase 2 — Effect sends | **Cut from the initial release.** FX removed from the UI; the per-channel send node stays in the engine, output unconnected. |
 
-### Acceptance Criteria (6-stem page)
+### Acceptance Criteria
+
+Scope changed on 8/3/26: five ordinal pages at 2/3/5/6/8 stems, scrolling allowed, no FX.
+Verified in headless Chrome at 402 × 874 against both R2 and `?stems=local`.
+
+| Criterion | p1 (2) | p2 (3) | p3 (5) | p4 (6) | p5 (8) |
+| --- | --- | --- | --- | --- | --- |
+| Correct stem count decodes and mounts | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Volume fader / mute / pan per stem | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Single transport (play/pause, seek) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Transport sticky at top on scroll | ✅ | ✅ | ✅ | ✅ | ✅ |
+| No FX element present | ✅ | ✅ | ✅ | ✅ | ✅ |
+| All controls reachable (scroll allowed) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Runs on a physical iPhone** | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ **the risk** |
+
+Two Session 2 criteria are inherited from unchanged shared modules but are **not
+re-verified against the new 165.7s stem set**: musical sync across 8 stems, and the loop
+seam. Both need Adam's ears — nothing in the engine changed this session.
+
+Carried over, still true:
 
 | Criterion | State |
 | --- | --- |
-| Correct number of stems load and play | ✅ All 6 decode and mount |
-| Stems play in sync | ✅ Confirmed on desktop with real strict-loop stems |
-| All stems loop on completion | ✅ Confirmed — no audible seam (see Session 2) |
-| Volume fader per stem | ✅ Confirmed in Chrome + Safari |
-| Mute toggle per stem | ✅ Confirmed on desktop |
-| Pan control per stem | ✅ Confirmed in Chrome + Safari |
-| Dummy FX-send element per row | ✅ Renders, inert |
-| Single transport (play/pause, seek) | ✅ Confirmed on desktop |
-| Fits iPhone 16 Pro portrait, no scroll | ✅ Confirmed on device, across browsers |
 | Audio loaded from R2, not the repo | ✅ `adamrhilton-dot-com-media/stems/` via r2.dev; stems untracked in git |
-| Deploys cleanly to Vercel/GH Pages | ✅ Live at https://adam-hilton.github.io/web-stem-player/page-6.html |
+| Deploys cleanly to Vercel/GH Pages | ✅ Live at https://adam-hilton.github.io/web-stem-player/ (`index.html` lists all five pages) |
 
 ## Session Log
+
+### Session 3 — 2026-08-03
+
+Implemented the six-item 8/3/26 requirements change from the bottom of
+[stem-player-project-plan.md](stem-player-project-plan.md). Phase 1 is now complete on
+desktop; the one genuinely open question is whether the 8-stem page survives on an iPhone.
+
+**The stem set was silently replaced, and it matters.** The new files are **165.672s**, not
+69.696s — 2.4× longer, 6.6MB instead of 2.8MB each. Nobody flagged this; it was found by
+probing R2. At 48kHz stereo Float32 that is 60.7 MiB decoded per stem, measured in-browser
+rather than estimated:
+
+| Page | Stems | Download | Decoded (measured) |
+| --- | --- | --- | --- |
+| page-4 | 6 | ~40 MB | **364 MiB** |
+| page-5 | 8 | ~53 MB | **485 MiB** |
+
+Session 2 proved ~153 MiB on device. This file's own Session 1 analysis calls 363 MiB
+"plausible but risky on iOS Safari" — so page-4 sits exactly on that line and page-5 is
+above it, at 3.2× what has actually been shown to work. **This is the session's one real
+risk and it is untested.** If page-5 crashes or fails to decode on the phone, the mitigation
+order is unchanged from Session 1: mono stems first (→ 242 MiB, halves it outright), then a
+shorter loop. Pinning the context to 44100 only buys 445 MiB and costs a resample — not
+worth doing.
+
+**The loop seam survives the swap.** 6903 mp3 frames × 1152 = 7,952,256 samples = exactly
+165.672s at 48kHz. No partial final frame, so no tail padding, same property that made
+Session 2's set gapless. A future export that doesn't land on a frame boundary brings the
+seam back and makes the `loopStart`/`loopEnd` fix live again.
+
+**Built**
+
+- [src/shared/config.js](src/shared/config.js) — added `STEM_FILES` (all 8, URL-encoded) and
+  `stemsFor(n)`. Pages take a prefix of one list instead of restating filenames five times;
+  it throws if asked for more stems than exist. `STEM_BASE` and `?stems=local` unchanged.
+- `src/page-1.html` … `src/page-5.html` at 2/3/5/6/8 stems — three meaningful lines each.
+  **`src/page-6.html` deleted**, which retires the Session 2 deployed URL.
+- [src/index.html](src/index.html) — new. The site root used to 404, so there was no way to
+  reach a page without knowing its filename.
+- [src/shared/transport.js](src/shared/transport.js) — mounted first (so it can stick at the
+  top) and both glyphs are now one inline SVG. Button state is derived from `engine.playing`
+  via a `render()` rather than set imperatively, so the two can't drift.
+- [src/shared/styles.css](src/shared/styles.css) — the substantive edit. Scrolling allowed,
+  rows fixed-height instead of flexed, transport sticky, pan 76px → 128px, `.fx` gone.
+
+**Removed the FX badge**, not the send node. The change log scopes the removal to the UI, and
+the `panner → send` tap costs nothing with its output unconnected — so re-adding effects
+stays a UI-only change. This was the cheap branch the badge was built to preserve, and it
+paid off exactly as intended: one element deletion, no layout rework.
+
+**Why dropping the no-scroll constraint simplified the CSS.** The Session 1 slider-collapse
+bug — rows crushing sliders into an untouchable sliver on a short window — was a *consequence*
+of `.row { flex: 1 }` fighting a viewport too short for the layout. Session 1 defended against
+it with a `min-height: calc(var(--control) * 2)` floor. With scrolling allowed, rows size
+naturally at a fixed 100px and the failure mode can't occur, so the guard and its comment were
+deleted rather than kept. Fewer moving parts than before the change, not more.
+
+**Verified** in headless Chrome over CDP at 402 × 874, against both R2 and `?stems=local`:
+all five pages mount the right stem count; mute sets state/aria/class; pan writes `L50` to the
+readout; fader writes `0.25`; a click at the midpoint of the seek line lands at 83s of
+165.672s; every control measures 44px; the transport reports `position: sticky` with
+`getBoundingClientRect().top === 0` while scrolled; the play button has zero text content in
+both states, so nothing can render as an emoji.
+
+**Not verified — Adam's to judge:** anything audible (8-stem sync, the loop seam on the new
+set) and anything on a physical iPhone.
 
 ### Session 2 — 2026-07-28
 
@@ -135,7 +211,13 @@ entirely and is the better loop from here anyway.
 | --- | --- |
 | `AudioBufferSourceNode`, not `<audio>` | The loop requirement forced it. Six independently-clocked `<audio>` elements with `loop = true` desync *permanently* after the first cycle, not merely drift. With buffer sources, `loop = true` on a shared start time is sample-accurate and gapless for free. |
 | Release targets **Safari + Chrome only** | Firefox explicitly de-scoped; revisit only if scaling out later demands it. |
-| Effect send is a true parallel send, not an insert | The plan's prose says "send" but its signal chain draws an insert. Implemented as `panner → send`, send output unconnected until Phase 2. |
+| Effect send is a true parallel send, not an insert | The plan's prose says "send" but its signal chain draws an insert. Implemented as `panner → send`, send output unconnected. |
+| FX out of the UI, send node kept (Session 3) | The 8/3 change log scopes the removal to the UI. The node is invisible and free with its output unconnected, so keeping it means effects are a UI-only change if they ever come back. |
+| Pages are **ordinal**, not named by stem count | The 8/3 change log says "page 1: 2 stems", so the number is a page index. Consequence: `page-4.html` has 6 stems, and the old count-named `page-6.html` had to go — its deployed URL is dead. `index.html` exists so nobody has to guess filenames. |
+| Pages take the **first N** stems | The change log fixed the counts (2/3/5/6/8) but not which stems. Adam's call: a prefix of the list. One `stemsFor(n)` call per page, no per-page stem tables to keep in sync. |
+| Scrolling allowed; rows fixed-height (Session 3) | 8 rows can't fit one phone viewport with 44px targets, and the change log dropped the requirement. Rows stop flexing, which also deletes the Session 1 slider-collapse failure mode rather than guarding against it. |
+| Play/pause glyphs are one inline SVG | U+23F8 renders as a colour emoji on Apple platforms and looks nothing like the play triangle beside it. Drawing both states in one SVG keeps them optically matched and independent of font coverage. |
+| Stem 8 is a byte-identical copy of stem 6 | Known and accepted for the POC (Adam's call, Session 3). page-5 plays that material twice. Replace the export when it matters; no code change needed. |
 | ~~Stems committed to the repo for now~~ | **Superseded (Session 2).** Stems live in R2 and are gitignored, so the 16MB loop set never entered git history. |
 | Hosting: **GitHub Pages**, not Vercel | `gh` was already authenticated with `repo` + `workflow` scopes, so it needed no new logins or CLI installs, and the site is static-only. Revisit only if per-branch preview deploys or custom slugs become worth it. |
 | Pages deploys `src/` as an Actions artifact | Pages' built-in source can only serve the repo root or `/docs`. An Actions deploy keeps `src/` as the source dir with no rename and no copy step. |
@@ -153,6 +235,11 @@ entirely and is the better loop from here anyway.
   `canplaythrough` poll; its loop pauses every track, seeks, and re-polls — an audible gap
   and fresh desync at every loop point. Engine here written from scratch.
 - **iPhone 16 Pro is 402 × 874 CSS px**, not the ~393pt in plan line 57 (that's the 14/15 Pro).
+- **The plan body is superseded by its own change log** (8/3/26), which is the last section of
+  the file. Four of the body's stated requirements are now wrong: 6 stems (now 8), the
+  single-viewport no-scroll constraint (dropped), the FX send (out of scope), and pages named
+  by stem count (now ordinal). The plan's banner says so; this note is here for anyone who
+  reads the progress file first.
 - **CORS on R2 is mandatory, not forward-looking.** Plan lines 75–78 treat it as a Phase 2
   nicety because a plain `<audio>` tag doesn't need it. `decodeAudioData` does. Without
   `Access-Control-Allow-Origin` the deployed pages will not play at all.
@@ -193,6 +280,13 @@ Mitigations, best first:
 comfortable. Worth an early on-device test with one real 3-minute set before committing to
 the full six.
 
+**Session 3 update — this section is live again.** The 8/3 stem set is 165.672s at 48kHz
+stereo, and measured decoded footprint is **364 MiB on page-4 (6 stems)** and **485 MiB on
+page-5 (8 stems)**. So page-4 sits exactly on the "plausible but risky" line above and page-5
+is well past it. Mitigation 1 (mono) is the one that matters, taking page-5 to ~242 MiB;
+mitigation 3 (pin 44100) only reaches 445 MiB and costs a resample, so skip it. Untested on
+device as of end of Session 3.
+
 ### Loop seam — likely fixable without WAV
 
 mp3 (and AAC) carry encoder delay: ~576–1105 samples of silence prepended, plus tail padding
@@ -206,46 +300,45 @@ Because it's shared, one number fixes all six: set `loopStart` past the delay an
 keeps a compressed delivery format. Needs the exact loop length in samples, which means
 knowing BPM and bar count at export time.
 
+**Session 3 update — still dormant.** The new 165.672s set is 6903 mp3 frames × 1152 samples
+exactly, so it lands on a frame boundary like the old one and carries no tail padding. The fix
+above stays unnecessary until an export doesn't divide evenly.
+
 ### Still open from the plan
 
-- Final stem-count range (1–5 vs 2–6) — not blocking; all 6 pages get built.
-- Offline/cached vs online-only.
+- Offline/cached vs online-only. Never settled; online-only is the de facto state.
 - ~~Hosting choice: Vercel vs GitHub Pages.~~ **Resolved: GitHub Pages** — `gh` was already
   authenticated with `repo` + `workflow` scopes, so it needed no new logins, and the site is
   static-only. Revisit if per-branch preview deploys or custom slugs become worth it.
-- Pages 1–5 deliberately deferred until the mobile layout is confirmed on a real device, so
-  any layout fix only has to be made once rather than across six files.
+- ~~Final stem-count range (1–5 vs 2–6)~~ — **resolved by the 8/3 change log**, which fixes
+  five ordinal pages at 2/3/5/6/8 stems. The question is closed, just not the way it was
+  framed: the answer was neither 1–5 nor 2–6.
+- ~~Pages 1–5 deferred until the layout is device-confirmed~~ — **done in Session 3.**
 
 ## Next Session
 
-Adam's stated plan, in order:
-
-1. **Build out all pages** — pages 1–5, copied from `page-6.html` with the config trimmed.
-   Now unblocked: the layout is device-confirmed, so a fix won't have to be applied six
-   times. The last outstanding Phase 1 item.
-2. **Then possibly Phase 2 effects.** Genuinely reachable — the `panner → send` tap already
-   exists per channel with its output unconnected, so no rewiring of the audio graph.
-3. **Or, if effects are cut from the POC scope, remove the FX UI instead.** Either branch is
-   cheap by design: the FX badge was built as an inert placeholder precisely so the row
-   layout wouldn't need revisiting whichever way this went. Deciding *not* to build effects
-   costs one element deletion per row, not a layout rework.
+1. **Test page-5 on a physical iPhone.** The only outstanding acceptance criterion and the
+   only real risk in the build: 485 MiB decoded against ~153 MiB last proven. Load it over
+   cellular, hit play, let it loop once. If it dies, go to mono stems (→ ~242 MiB) — that is
+   a re-export, not a code change.
+2. **Confirm by ear** what can't be checked from a headless browser: 8-stem sync and the loop
+   seam on the new set.
+3. **Deploy and check the live URLs**, including that the site root now serves `index.html`.
+   Note `page-6.html` is gone, so any saved link to it is dead.
 
 Optional, unscheduled: attach a custom domain (e.g. `audio.adamrhilton.com`) to the bucket
 for Cloudflare caching and to escape the r2.dev rate limit. One line in
-[config.js](src/shared/config.js) plus adding the origin to the CORS policy. Worth doing
-only if these pages outlive testing.
+[config.js](src/shared/config.js) plus adding the origin to the CORS policy. More attractive
+than it was — page-5 pulls ~53 MB per load against r2.dev's rate limit, up from ~17 MB.
 
-**Resolved, no longer open:** mono-vs-stereo and delivery format. Stereo mp3 at this loop
-length loads in ~2s on cellular and doesn't crash iOS, so the Session 1 memory mitigations
-(mono, Opus/AAC, pinning the sample rate) are unnecessary. Revisit only if stems get
-substantially longer.
-
-**Still open:** final stem-count range (1–5 vs 2–6) — building all 6 pages sidesteps needing
-the answer. Offline/cached vs online-only was never settled and has cost nothing so far;
-online-only is the de facto state.
+**Reopened:** mono-vs-stereo. Session 2 closed it on the grounds that "stereo mp3 at this loop
+length loads in ~2s and doesn't crash iOS" — but that was the 69.7s set. The 8/3 stems are
+2.4× longer and there are 8 of them, so the reasoning no longer transfers. Delivery format
+(mp3 vs AAC/Opus) is a download question, not a memory one, and ~53 MB still loads acceptably;
+that half stays closed.
 
 **Housekeeping carried forward:** the local copies in `src/stems/` are gitignored, so the
-repo no longer backs them up — R2 and the local disk are the only copies. `src/stems-old/`
-is untracked and can be deleted whenever. The repo is public because Pages from a private
-repo needs a paid plan; nothing sensitive is in it, but the visibility choice was never
-explicitly confirmed.
+repo no longer backs them up — R2 and the local disk are the only copies. That now covers all
+8 stems, ~53 MB. `src/stems-old/` is gone (its `.gitignore` entry is harmless and can stay).
+The repo is public because Pages from a private repo needs a paid plan; nothing sensitive is
+in it, but the visibility choice was never explicitly confirmed.

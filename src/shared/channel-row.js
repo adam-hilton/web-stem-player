@@ -1,9 +1,10 @@
-// One stem = one 100px row of two 50px sub-rows:
-//   [ label ][ mute ][ pan ][ FX ]   <- info line
-//   [========== fader ==========]   <- full-width
+// One stem = one row of two sub-rows:
+//   [ label ][ pan ][ L/R ][ mute ]   <- info line
+//   [========== fader ==========]    <- full-width
 //
-// The FX badge is a Phase 1 placeholder: it renders and is inert, so wiring it
-// to the engine's send node in Phase 2 needs no layout change.
+// There was an inert FX badge here as a Phase 2 placeholder; effect sends are
+// out of scope for the initial release, so it's gone. The engine still exposes a
+// per-channel send node, so bringing it back is a UI-only change.
 
 export function createChannelRow(engine, index) {
   const channel = engine.channels[index];
@@ -47,9 +48,6 @@ export function createChannelRow(engine, index) {
   });
   showPan(Number(pan.value));
 
-  const fx = el('span', 'fx', 'FX');
-  fx.title = 'Effect send — not wired yet (Phase 2)';
-
   const fader = range(0, 1, 0.01, channel.volume, `Volume ${channel.label}`);
   fader.classList.add('fader');
   fader.addEventListener('input', () => engine.setVolume(index, Number(fader.value)));
@@ -60,7 +58,7 @@ export function createChannelRow(engine, index) {
   const faderLine = el('div', 'fader-line');
   faderLine.append(fader);
 
-  info.append(label, pan, readout, mute, fx);
+  info.append(label, pan, readout, mute);
   row.append(info, faderLine);
   return row;
 }

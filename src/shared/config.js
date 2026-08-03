@@ -14,3 +14,29 @@ const R2_BASE = 'https://pub-030a03d025f2474ab65b56ef3dde2fe2.r2.dev/stems/';
 const useLocal = new URLSearchParams(location.search).get('stems') === 'local';
 
 export const STEM_BASE = useLocal ? 'stems/' : R2_BASE;
+
+// The full stem set, in order. Filenames are URL-encoded because the source
+// files contain spaces. Pages take a prefix of this list rather than restating
+// it, so adding or reordering stems is one edit here instead of five.
+export const STEM_FILES = [
+  'loop-stem%201-Audio.mp3',
+  'loop-stem%202-Audio.mp3',
+  'loop-stem%203-Audio.mp3',
+  'loop-stem%204-Audio.mp3',
+  'loop-stem%205-Audio.mp3',
+  'loop-stem%206-Audio.mp3',
+  'loop-stem%207-Audio.mp3',
+  'loop-stem%208-Audio.mp3',
+];
+
+// The first `count` stems, as mountPlayer() wants them. No `pan`/`volume` seeds:
+// every control defaults to unity (centre / 1.0) so a page loads neutral.
+export function stemsFor(count) {
+  if (count > STEM_FILES.length) {
+    throw new Error(`Asked for ${count} stems; only ${STEM_FILES.length} exist`);
+  }
+  return STEM_FILES.slice(0, count).map((file, i) => ({
+    label: `Stem ${i + 1}`,
+    url: STEM_BASE + file,
+  }));
+}

@@ -1,14 +1,22 @@
 # Stem Player Pages — Project Plan
 
 > **This file is the original spec and is kept as written.** Where the build has
-> diverged from it — and it has, in a few places that matter — the running record
+> diverged from it — and it has, in several places that matter — the running record
 > in [project-progress.md](project-progress.md) is authoritative. See that file's
 > "Corrections to the Project Plan" section before trusting lines 64–79 (the
 > reference repo has no Web Audio API at all) or line 57 (wrong viewport width).
 >
-> **Status as of 2026-07-28:** the 6-stem page meets every acceptance criterion and
-> is deployed at https://adam-hilton.github.io/web-stem-player/page-6.html. Pages
-> 1–5 are the only outstanding Phase 1 work.
+> **The "Requirements Change Log" at the bottom of this file supersedes the body
+> above it.** As of 8/3/26 the body is wrong about four things it states as
+> requirements: there are 8 stems not 6, scrolling is allowed (the single-viewport
+> constraint is dropped), the FX send is out of scope for the initial release, and
+> the five pages are ordinal (`page-1`…`page-5`) with 2/3/5/6/8 stems rather than
+> named by stem count. Read the change log first.
+>
+> **Status as of 2026-08-03:** all five pages are built and deployed under
+> https://adam-hilton.github.io/web-stem-player/ (start at `index.html`). The
+> `page-6.html` URL from Session 2 has been retired. Phase 1 is complete pending
+> on-device confirmation of the 8-stem page.
 
 ## Overview
 A set of static, personal-use web pages, each a lightweight stem player with a
@@ -180,16 +188,37 @@ From `src/`, run any static file server — no build step:
 cd src && python3 -m http.server 8000
 ```
 
-Then open http://localhost:8000/page-6.html
+Then open http://localhost:8000/ — the index lists all five pages.
 
 Stems come from R2 by default, so that URL works with no local audio present.
 To read the local copies in `src/stems/` instead — offline work, or A/B-ing
 against R2 — append `?stems=local`:
 
 ```
-http://localhost:8000/page-6.html?stems=local
+http://localhost:8000/page-5.html?stems=local
 ```
 
 Note that `localhost` won't reach a phone on the same Wi-Fi; use the Mac's LAN IP
 (`ipconfig getifaddr en0`), and be aware that public/guest networks commonly block
 device-to-device traffic outright. Testing against the deployed URL avoids this.
+
+## Requirements Change Log
+
+### 8/3/26
+
+- There will be a total of 8 stems. We can throw out the requirement of compressing everything to a single viewport, scrolling is fine. All stems are currently uploaded.
+
+- Move the play button and playhead to the top and make the element sticky on scroll
+
+- When the play button changes from stopped to playing, the representation of 'pause' is an emoji. Please don't use an emoji to represent 'pause', use a UI element the same way as 'play' is represented.
+
+- Still 5 pages total, but with the following stem groupings:
+-- page 1: 2 stems
+-- page 2: 3 stems
+-- page 3: 5 stems
+-- page 4: 6 stems
+-- page 5: 8 stems
+
+- No FX send for initial release. Remove from the UI.
+
+- expand the width of the panning a bit with the extra horizontal space gained
