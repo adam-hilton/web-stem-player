@@ -105,40 +105,43 @@ both states, so nothing can render as an emoji.
 **Not verified — Adam's to judge:** anything audible (8-stem sync, the loop seam on the new
 set) and anything on a physical iPhone.
 
-#### Silent on iPhone — open, fix is a hypothesis
+#### Silent on iPhone — RESOLVED: iOS Silent Mode
 
-Reported at the end of the session: the deployed pages play silently on device while working
-on desktop and in the desktop emulator. It predates this session's work — it reproduces on the
-old page with the old stems — and it reproduces on page-1, which is only 2 stems, so it is
-neither a regression nor the memory ceiling.
+The deployed pages played silently on device while working on every desktop browser. Cause:
+**the phone was in Silent Mode.** Adam has had it on for years and it has never affected any
+other site.
 
-What's been ruled out, and what it rules in:
+**Why it only hit this player.** iOS assigns web audio to different audio session categories
+depending on how it is produced. A plain `<audio>`/`<video>` element gets `playback`, which
+ignores the mute switch — that is why Bandcamp and YouTube play normally on a silenced phone.
+The Web Audio API defaults to a category that *obeys* it. This player is `AudioBufferSourceNode`
+end to end (the Session 1 decision that bought gapless looping), so it sat on the wrong side of
+that split. The asymmetry is what made the evidence so misleading: "other sites play audio
+fine" was true and pointed the wrong way.
 
-- **Not the graph.** An `AnalyserNode` tapped on master in desktop Chrome reads peak 0.044 /
-  RMS 0.018 with the context `running`. Signal reaches `destination`.
-- **Not the phone.** Ring/Silent switch off, media volume up, other sites audible.
-- **Not a frozen clock.** The timer counts up on device, so `ctx.currentTime` is advancing.
-- **Never worked.** Session 2's on-device pass confirmed *layout* only — its table credits
-  sync, mute and transport to desktop. On-device audio was never actually checked.
+**Why it worked last week.** Silent Mode only mutes the built-in speaker. Any Bluetooth or
+wired output connected at the time would have played normally with the setting untouched.
 
-Leading cause, and what was changed: the `AudioContext` is constructed at page load because
-`decodeAudioData` needs one, so it is born outside any user gesture. WebKit runs such a
-context — clock advancing, state `running` — while routing its output nowhere. `play()` also
-guarded `resume()` behind `if (state === 'suspended')`, which on iOS skips the call in exactly
-the case that needs it, since the state can read `running` while the session is inactive.
-`_activate()` in [audio-engine.js](src/shared/audio-engine.js) now resumes unconditionally and
-starts one frame of silence, both synchronously inside the gesture, to force session
-activation. **Unverified — there is no iPhone in the loop here.**
+**Fixed properly rather than by changing the phone.** [audio-engine.js](src/shared/audio-engine.js)
+now sets `navigator.audioSession.type = 'playback'` (Safari 16.4+, feature-detected — desktop
+Chrome doesn't implement it and no-ops). That asks for the same category media elements get, so
+the player behaves like Bandcamp does. Verified on desktop that the detection no-ops cleanly and
+playback is unaffected; **the Silent Mode behaviour itself still needs one on-device check.**
 
-Also worth ruling out for free: iOS Safari caps concurrent `AudioContext`s and returns silent
-ones past the limit. Five newly-built pages open across five tabs would hit it. Force-quit
-Safari, open one page.
+**Diagnostic note for next time:** an iPhone 16 Pro has no Ring/Silent switch — Silent Mode
+lives on the Action Button and in Control Center, with no visible physical indicator. "Check
+the mute switch" is not an actionable instruction on this hardware, which is how it survived a
+round of triage that had supposedly ruled it out.
 
-To diagnose on the phone without tethering to a Mac, append **`?debug=1`** — see
-[debug.js](src/shared/debug.js). It shows context state and a live output level off an
-analyser on master, which splits the remaining causes: a moving level with no sound means
-routing (nothing in this repo will fix it); a level pinned at `0.000` means the graph is
-silent and the bug is ours.
+Kept from the investigation: **`?debug=1`** ([debug.js](src/shared/debug.js)) shows context
+state and a live output level off an analyser on master. Useful for the outstanding 485 MiB
+device test — a level pinned at `0.000` means the graph is silent, a moving level means the
+graph is fine and the problem is downstream.
+
+Discarded from the investigation: a speculative audio-session "unlock" (unconditional resume
+plus a one-frame silent buffer) written against the wrong hypothesis. Only the unconditional
+`resume()` survives, and only because Safari's non-standard `interrupted` state is a real thing
+the old `if (suspended)` guard would skip.
 
 ### Session 2 — 2026-07-28
 
@@ -253,6 +256,7 @@ entirely and is the better loop from here anyway.
 | Scrolling allowed; rows fixed-height (Session 3) | 8 rows can't fit one phone viewport with 44px targets, and the change log dropped the requirement. Rows stop flexing, which also deletes the Session 1 slider-collapse failure mode rather than guarding against it. |
 | Play/pause glyphs are one inline SVG | U+23F8 renders as a colour emoji on Apple platforms and looks nothing like the play triangle beside it. Drawing both states in one SVG keeps them optically matched and independent of font coverage. |
 | Stem 8 is a byte-identical copy of stem 6 | Known and accepted for the POC (Adam's call, Session 3). page-5 plays that material twice. Replace the export when it matters; no code change needed. |
+| Request the `playback` audio session on iOS | Web Audio otherwise obeys iOS Silent Mode while `<audio>` elements don't, so the player alone went silent on a muted phone. `navigator.audioSession.type = 'playback'` buys the media-element behaviour without giving up buffer sources. Side effect: it also means the player ducks other apps' audio, which is correct for a music tool. |
 | ~~Stems committed to the repo for now~~ | **Superseded (Session 2).** Stems live in R2 and are gitignored, so the 16MB loop set never entered git history. |
 | Hosting: **GitHub Pages**, not Vercel | `gh` was already authenticated with `repo` + `workflow` scopes, so it needed no new logins or CLI installs, and the site is static-only. Revisit only if per-branch preview deploys or custom slugs become worth it. |
 | Pages deploys `src/` as an Actions artifact | Pages' built-in source can only serve the repo root or `/docs`. An Actions deploy keeps `src/` as the source dir with no rename and no copy step. |
@@ -352,10 +356,10 @@ above stays unnecessary until an export doesn't divide evenly.
 
 ## Next Session
 
-1. **Chase the iPhone silence first** — it blocks every other on-device check. Deploy the
-   `_activate()` fix, force-quit Safari, open one page with `?debug=1`, and read the output
-   level. See the Session 3 subsection for what each reading means.
-2. **Then test page-5 on the phone.** 485 MiB decoded against ~153 MiB last proven. Load it
+1. **Confirm the Silent Mode fix on device** — turn Silent Mode back *on* and check the player
+   still plays. That verifies `navigator.audioSession.type = 'playback'` is doing its job
+   rather than the phone setting having been the only thing keeping it working.
+2. **Test page-5 on the phone.** 485 MiB decoded against ~153 MiB last proven. Load it
    over cellular, hit play, let it loop once. If it dies, go to mono stems (→ ~242 MiB) —
    that is a re-export, not a code change.
 3. **Confirm by ear** what can't be checked from a headless browser: 8-stem sync and the loop

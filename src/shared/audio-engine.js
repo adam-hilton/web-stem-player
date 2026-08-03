@@ -21,6 +21,19 @@ const RAMP = 0.015; // seconds; short ramp keeps gain/pan changes click-free
 export class StemEngine {
   constructor(stems) {
     this.stems = stems;
+
+    // Without this, iOS silences the whole player whenever the phone is in
+    // Silent Mode — and only the player. Web Audio defaults to an audio session
+    // category that obeys the mute switch, while a plain <audio> element gets the
+    // 'playback' category and ignores it. That asymmetry is why Bandcamp and
+    // YouTube keep working on a muted phone and this page did not, which makes it
+    // look like a bug in the page rather than a device setting.
+    //
+    // Safari 16.4+ lets us ask for the same category media elements get. Silent
+    // Mode is easy to leave on for years without noticing on a 16 Pro, where it
+    // lives on the Action Button rather than a switch you can see.
+    if ('audioSession' in navigator) navigator.audioSession.type = 'playback';
+
     this.ctx = new (window.AudioContext || window.webkitAudioContext)();
     this.master = this.ctx.createGain();
     this.master.connect(this.ctx.destination);
@@ -51,7 +64,6 @@ export class StemEngine {
 
     this.duration = 0;
     this.playing = false;
-    this._activated = false; // see _activate(): iOS audio-session unlock
     this._startCtxTime = 0; // ctx.currentTime at which playback began
     this._startOffset = 0; // position within the loop at that moment
     this._pausedAt = 0;
@@ -82,34 +94,12 @@ export class StemEngine {
     });
   }
 
-  // iOS only. The context is constructed at page load because decodeAudioData
-  // needs one, which means it is born outside any user gesture — and WebKit will
-  // happily run such a context, advancing currentTime, while routing its output
-  // nowhere. The symptom is a page that looks like it is playing, with a moving
-  // playhead and a running clock, and is silent. Desktop Chrome and Safari don't
-  // enforce this, so it only ever shows up on device.
-  //
-  // Two things are needed, both synchronous so they stay inside the gesture that
-  // called play():
-  //   - resume() unconditionally, not just when state reads 'suspended'. On iOS
-  //     the state can read 'running' while the session is still inactive, so the
-  //     old `if (suspended)` guard skipped the call in exactly the case that
-  //     needed it. Also covers Safari's non-standard 'interrupted' state.
-  //   - start one frame of silence. Actually rendering something is what makes
-  //     WebKit activate the audio session and attach a real output route.
-  _activate() {
-    this.ctx.resume();
-    if (this._activated) return;
-    this._activated = true;
-    const kick = this.ctx.createBufferSource();
-    kick.buffer = this.ctx.createBuffer(1, 1, this.ctx.sampleRate);
-    kick.connect(this.ctx.destination);
-    kick.start();
-  }
-
   play() {
     if (this.playing || !this.duration) return;
-    this._activate();
+    // Unconditional rather than guarded on state === 'suspended': Safari also has
+    // a non-standard 'interrupted' state — a phone call, or another app taking
+    // the audio session — which that guard would skip straight past.
+    this.ctx.resume();
 
     // Small lookahead so every source is scheduled before the clock reaches it —
     // this is what makes the start sample-accurate rather than best-effort.
