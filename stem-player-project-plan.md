@@ -13,10 +13,12 @@
 > the five pages are ordinal (`page-1`…`page-5`) with 2/3/5/6/8 stems rather than
 > named by stem count. Read the change log first.
 >
-> **Status as of 2026-08-03:** all five pages are built and deployed under
-> https://adam-hilton.github.io/web-stem-player/ (start at `index.html`). The
-> `page-6.html` URL from Session 2 has been retired. Phase 1 is complete pending
-> on-device confirmation of the 8-stem page.
+> **Status as of 2026-08-03: v1 is wrapped.** All five pages are built, deployed
+> under https://adam-hilton.github.io/web-stem-player/ (start at `index.html`), and
+> confirmed working on device over cellular. The `page-6.html` URL from Session 2
+> has been retired. Phase 1 is complete; Phase 2 (effect sends) was cut from the
+> initial release. Remaining ideas are optimisations only — see the "v1 — Wrapped"
+> section of [project-progress.md](project-progress.md).
 
 ## Overview
 A set of static, personal-use web pages, each a lightweight stem player with a

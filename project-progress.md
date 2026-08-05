@@ -8,7 +8,7 @@ Updated at the end of each session. Newest session first in the log.
 | Phase | State |
 | --- | --- |
 | Phase 0 — Setup | **Superseded.** Reference-repo extraction turned out to be a no-op (see Corrections). R2 holds all 8 stems. |
-| Phase 1 — Core player | **All five pages built and deployed.** Only outstanding item is on-device confirmation of the 8-stem page (see the Session 3 risk). |
+| Phase 1 — Core player | **Complete. v1 shipped 2026-08-03.** Five pages built, deployed, and confirmed on device over cellular. |
 | Phase 2 — Effect sends | **Cut from the initial release.** FX removed from the UI; the per-channel send node stays in the engine, output unconnected. |
 
 ### Acceptance Criteria
@@ -24,7 +24,7 @@ Verified in headless Chrome at 402 × 874 against both R2 and `?stems=local`.
 | Transport sticky at top on scroll | ✅ | ✅ | ✅ | ✅ | ✅ |
 | No FX element present | ✅ | ✅ | ✅ | ✅ | ✅ |
 | All controls reachable (scroll allowed) | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Runs on a physical iPhone** | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ **the risk** |
+| **Runs on a physical iPhone** | ✅ | ✅ | ✅ | ✅ | ✅ over cellular |
 
 Two Session 2 criteria are inherited from unchanged shared modules but are **not
 re-verified against the new 165.7s stem set**: musical sync across 8 stems, and the loop
@@ -57,11 +57,14 @@ rather than estimated:
 
 Session 2 proved ~153 MiB on device. This file's own Session 1 analysis calls 363 MiB
 "plausible but risky on iOS Safari" — so page-4 sits exactly on that line and page-5 is
-above it, at 3.2× what has actually been shown to work. **This is the session's one real
-risk and it is untested.** If page-5 crashes or fails to decode on the phone, the mitigation
-order is unchanged from Session 1: mono stems first (→ 242 MiB, halves it outright), then a
-shorter loop. Pinning the context to 44100 only buys 445 MiB and costs a resample — not
-worth doing.
+above it, at 3.2× what had ever been shown to work.
+
+**Resolved the same day: it works.** Adam loaded page-5 on the phone over cellular only —
+loads in ~1s, with a few seconds more before the page is fully responsive, which he accepted.
+So 485 MiB decoded across 8 stems is inside what iOS tolerates at this loop length, and none
+of the Session 1 mitigations (mono, Opus/AAC, pinning the sample rate) are required. The
+ceiling is higher than this file previously assumed — treat 363 MiB as conservative, not as
+a limit. Revisit only if stems get substantially longer again.
 
 **The loop seam survives the swap.** 6903 mp3 frames × 1152 = 7,952,256 samples = exactly
 165.672s at 48kHz. No partial final frame, so no tail padding, same property that made
@@ -102,8 +105,9 @@ readout; fader writes `0.25`; a click at the midpoint of the seek line lands at 
 `getBoundingClientRect().top === 0` while scrolled; the play button has zero text content in
 both states, so nothing can render as an emoji.
 
-**Not verified — Adam's to judge:** anything audible (8-stem sync, the loop seam on the new
-set) and anything on a physical iPhone.
+**Confirmed on device at end of session.** All five pages play correctly on the iPhone, with
+page-5 loaded over cellular only: ~1s to load, a few more seconds before fully responsive
+(the cost of decoding 485 MiB), accepted as-is. **v1 is wrapped.**
 
 #### Silent on iPhone — RESOLVED: iOS Silent Mode
 
@@ -123,10 +127,10 @@ fine" was true and pointed the wrong way.
 wired output connected at the time would have played normally with the setting untouched.
 
 **Fixed properly rather than by changing the phone.** [audio-engine.js](src/shared/audio-engine.js)
-now sets `navigator.audioSession.type = 'playback'` (Safari 16.4+, feature-detected — desktop
-Chrome doesn't implement it and no-ops). That asks for the same category media elements get, so
-the player behaves like Bandcamp does. Verified on desktop that the detection no-ops cleanly and
-playback is unaffected; **the Silent Mode behaviour itself still needs one on-device check.**
+sets `navigator.audioSession.type = 'playback'` (Safari 16.4+, feature-detected — desktop Chrome
+doesn't implement it and no-ops). That asks for the same category media elements get, so the
+player behaves like Bandcamp does. **Confirmed working on device.** Side effect worth knowing:
+`playback` also ducks other apps' audio, which is correct for a music tool.
 
 **Diagnostic note for next time:** an iPhone 16 Pro has no Ring/Silent switch — Silent Mode
 lives on the Action Button and in Control Center, with no visible physical indicator. "Check
@@ -354,29 +358,38 @@ above stays unnecessary until an export doesn't divide evenly.
   framed: the answer was neither 1–5 nor 2–6.
 - ~~Pages 1–5 deferred until the layout is device-confirmed~~ — **done in Session 3.**
 
-## Next Session
+## v1 — Wrapped 2026-08-03
 
-1. **Confirm the Silent Mode fix on device** — turn Silent Mode back *on* and check the player
-   still plays. That verifies `navigator.audioSession.type = 'playback'` is doing its job
-   rather than the phone setting having been the only thing keeping it working.
-2. **Test page-5 on the phone.** 485 MiB decoded against ~153 MiB last proven. Load it
-   over cellular, hit play, let it loop once. If it dies, go to mono stems (→ ~242 MiB) —
-   that is a re-export, not a code change.
-3. **Confirm by ear** what can't be checked from a headless browser: 8-stem sync and the loop
-   seam on the new set.
-4. **Deploy and check the live URLs**, including that the site root now serves `index.html`.
-   Note `page-6.html` is gone, so any saved link to it is dead.
+Phase 1 is complete and confirmed on device. Nothing is outstanding; everything below is
+optional and nothing blocks use of the player as it stands.
 
-Optional, unscheduled: attach a custom domain (e.g. `audio.adamrhilton.com`) to the bucket
-for Cloudflare caching and to escape the r2.dev rate limit. One line in
-[config.js](src/shared/config.js) plus adding the origin to the CORS policy. More attractive
-than it was — page-5 pulls ~53 MB per load against r2.dev's rate limit, up from ~17 MB.
+**If load time is the next thing worth attacking**, in value order:
 
-**Reopened:** mono-vs-stereo. Session 2 closed it on the grounds that "stereo mp3 at this loop
-length loads in ~2s and doesn't crash iOS" — but that was the 69.7s set. The 8/3 stems are
-2.4× longer and there are 8 of them, so the reasoning no longer transfers. Delivery format
-(mp3 vs AAC/Opus) is a download question, not a memory one, and ~53 MB still loads acceptably;
-that half stays closed.
+1. **Custom domain on the R2 bucket** (e.g. `audio.adamrhilton.com`). The single biggest
+   remaining win and the least invasive: `r2.dev` is uncacheable *by design*, so every visit
+   re-downloads all ~53 MB. A custom domain puts Cloudflare's cache in front of it, making
+   repeat loads near-instant, and escapes the r2.dev rate limit — which matters more now that
+   one page pull is 53 MB rather than 17 MB. Cost: one line in
+   [config.js](src/shared/config.js) plus adding the origin to the CORS policy.
+2. **Mono stems.** Halves both download and the 485 MiB decoded footprint. The stronger
+   argument is musical, not technical: with stereo sources the pan control just rebalances an
+   already-stereo image, whereas with mono sources it actually places the stem. Cost: a
+   re-export, no code change.
+3. **AAC instead of mp3 320.** ~34 MB rather than ~53 MB at comparable quality. Memory is
+   unchanged — decoded size depends only on duration, channels and rate. Prefer AAC over Opus
+   here; Safari's Opus support through `decodeAudioData` is inconsistent and this project
+   targets Safari.
+
+**Separately, worth a look at the source material:** measured whole-file peaks are 0.053 on
+stem 1 (≈ −25 dBFS) and 0.242 on stem 2 (≈ −12 dBFS). That's a lot of unused headroom and it's
+why the quieter pages are hard to hear on a phone speaker. If these get normalised upward,
+watch the master: 8 channels at unity sum into a master gain of 1.0, so louder stems make
+clipping on the summing bus more likely, not less. Lower the master gain rather than re-seeding
+the faders — the neutral-defaults decision above is worth preserving.
+
+**Closed:** mono-vs-stereo and delivery format are both now optimisations rather than
+necessities — 485 MiB and ~53 MB are proven acceptable on device. Sample-rate pinning stays
+rejected: it buys 445 MiB and costs a resample.
 
 **Housekeeping carried forward:** the local copies in `src/stems/` are gitignored, so the
 repo no longer backs them up — R2 and the local disk are the only copies. That now covers all

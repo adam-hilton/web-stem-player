@@ -20,26 +20,27 @@ export const DEBUG = new URLSearchParams(location.search).get('debug') === '1';
 
 // The full stem set, in order. Filenames are URL-encoded because the source
 // files contain spaces. Pages take a prefix of this list rather than restating
-// it, so adding or reordering stems is one edit here instead of five.
-export const STEM_FILES = [
-  'loop-stem%201-Audio.mp3',
-  'loop-stem%202-Audio.mp3',
-  'loop-stem%203-Audio.mp3',
-  'loop-stem%204-Audio.mp3',
-  'loop-stem%205-Audio.mp3',
-  'loop-stem%206-Audio.mp3',
-  'loop-stem%207-Audio.mp3',
-  'loop-stem%208-Audio.mp3',
+// it, so adding or reordering stems is one edit here instead of five — and the
+// label travels with the file, so a stem reads the same on every page.
+export const STEMS = [
+  { label: 'Atmos', file: 'loop-stem%201-Audio.mp3' },
+  { label: 'Plinks', file: 'loop-stem%202-Audio.mp3' },
+  { label: 'Piano', file: 'loop-stem%203-Audio.mp3' },
+  { label: 'Counter', file: 'loop-stem%204-Audio.mp3' },
+  { label: 'Response', file: 'loop-stem%205-Audio.mp3' },
+  { label: 'Bass', file: 'loop-stem%206-Audio.mp3' },
+  { label: 'Vocals', file: 'loop-stem%207-Audio.mp3' },
+  { label: 'BG Vocals', file: 'loop-stem%208-Audio.mp3' },
 ];
 
 // The first `count` stems, as mountPlayer() wants them. No `pan`/`volume` seeds:
 // every control defaults to unity (centre / 1.0) so a page loads neutral.
 export function stemsFor(count) {
-  if (count > STEM_FILES.length) {
-    throw new Error(`Asked for ${count} stems; only ${STEM_FILES.length} exist`);
+  if (count > STEMS.length) {
+    throw new Error(`Asked for ${count} stems; only ${STEMS.length} exist`);
   }
-  return STEM_FILES.slice(0, count).map((file, i) => ({
-    label: `Stem ${i + 1}`,
+  return STEMS.slice(0, count).map(({ label, file }) => ({
+    label,
     url: STEM_BASE + file,
   }));
 }
